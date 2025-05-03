@@ -44,7 +44,9 @@ def commit_changes() -> str:
     subprocess.run(["git", "add", "-A"])
     # Commit the changes with the generated message
     subprocess.run(["git", "commit", "-m", commit_message])
-    return f"The following changes were backed up in the version history: {git_status.stdout}"
+
+    committed_diff_stat = subprocess.run(["git", "diff", "HEAD^", "--stat"], capture_output=True, text=True)
+    return f"The following changes were backed up in the version history: {committed_diff_stat.stdout}"
 
 @mcp.tool()
 def git_history() -> str:
