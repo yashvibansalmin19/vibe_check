@@ -15,8 +15,16 @@ from mcp.server import NotificationOptions, Server
 from pydantic import AnyUrl
 import mcp.server.stdio
 
+# Import tool implementations
+from .tools import track_change, revert_change, list_changes
+
 # Store code changes and chat context
 change_history: List[Dict[str, Any]] = []
+
+# Share the change_history with the tool modules
+track_change.change_history = change_history
+revert_change.change_history = change_history
+list_changes.change_history = change_history
 
 server = Server("vibe_check")
 
@@ -164,85 +172,16 @@ async def handle_call_tool(
 ) -> List[Union[types.TextContent, types.ImageContent, types.EmbeddedResource]]:
     """
     Handle tool execution requests for tracking and reverting code changes.
+    Routes requests to the appropriate tool implementation.
     """
     if name == "track-change":
-        if not arguments:
-            raise ValueError("Missing arguments")
-
-        file_path = arguments.get("file_path")
-        code_change = arguments.get("code_change")
-        chat_context = arguments.get("chat_context")
-        description = arguments.get("description")
-
-        if not all([file_path, code_change, chat_context, description]):
-            raise ValueError("Missing required arguments")
-
-        # Add new entry to change history
-        change_entry = {
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "file_path": file_path,
-            "code_change": code_change,
-            "chat_context": chat_context,
-            "description": description,
-        }
-        change_history.append(change_entry)
-
-        # Notify clients that resources have changed
-        await server.request_context.session.send_resource_list_changed()
-
-        return [
-            types.TextContent(
-                type="text",
-                text=f"Tracked code change in '{file_path}' with description: {description}",
-            )
-        ]
+        return await track_change.track_change(server.request_context, arguments)
     
     elif name == "revert-change":
-        if not arguments:
-            raise ValueError("Missing arguments")
-
-        index = arguments.get("index")
-        if index is None or not isinstance(index, int):
-            raise ValueError("Missing or invalid index")
-
-        if index < 0 or index >= len(change_history):
-            raise ValueError(f"Invalid index: {index}, must be between 0 and {len(change_history) - 1}")
-
-        # Get the change entry
-        change_entry = change_history[index]
-        
-        return [
-            types.TextContent(
-                type="text",
-                text=f"To revert change #{index} in '{change_entry['file_path']}':\n\n"
-                     f"1. The original code change was:\n{change_entry['code_change']}\n\n"
-                     f"2. This change was made in the context of:\n{change_entry['chat_context']}\n\n"
-                     f"3. You should manually revert these changes in your editor.",
-            )
-        ]
+        return await revert_change.revert_change(server.request_context, arguments)
     
     elif name == "list-changes":
-        if len(change_history) == 0:
-            return [
-                types.TextContent(
-                    type="text",
-                    text="No code changes have been tracked yet.",
-                )
-            ]
-        
-        changes_text = "Code Change History:\n\n"
-        for i, entry in enumerate(change_history):
-            changes_text += f"Change #{i}: {entry['timestamp']}\n"
-            changes_text += f"Description: {entry['description']}\n"
-            changes_text += f"File: {entry['file_path']}\n"
-            changes_text += "-" * 40 + "\n"
-        
-        return [
-            types.TextContent(
-                type="text",
-                text=changes_text,
-            )
-        ]
+        return await list_changes.list_changes(server.request_context, arguments)
     
     else:
         raise ValueError(f"Unknown tool: {name}")
