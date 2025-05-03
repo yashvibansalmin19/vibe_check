@@ -14,9 +14,10 @@ import mcp.types as types
 from mcp.server import NotificationOptions, Server
 from pydantic import AnyUrl
 import mcp.server.stdio
+import logging
 
 # Import tool implementations
-from .tools import track_change, revert_change, list_changes
+from vibe_check.tools import track_change, revert_change, list_changes
 
 # Store code changes and chat context
 change_history: List[Dict[str, Any]] = []
@@ -96,9 +97,9 @@ async def handle_get_prompt(
 
     if not arguments or "issue_description" not in arguments:
         raise ValueError("Missing issue description")
-    
+
     issue_description = arguments["issue_description"]
-    
+
     # Create a prompt that includes all change history
     changes_text = ""
     for i, entry in enumerate(change_history):
@@ -176,18 +177,19 @@ async def handle_call_tool(
     """
     if name == "track-change":
         return await track_change.track_change(server.request_context, arguments)
-    
+
     elif name == "revert-change":
         return await revert_change.revert_change(server.request_context, arguments)
-    
+
     elif name == "list-changes":
         return await list_changes.list_changes(server.request_context, arguments)
-    
+
     else:
         raise ValueError(f"Unknown tool: {name}")
 
 async def main():
     # Run the server using stdin/stdout streams
+    logging.debug("Starting MCP server...")
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         await server.run(
             read_stream,
