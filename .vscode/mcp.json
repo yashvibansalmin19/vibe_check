@@ -1,4 +1,12 @@
 {
+	"inputs": [
+		{
+			"type": "promptString",
+			"id": "openai-key",
+			"description": "OpenAI API Key",
+			"password": true
+		}
+	],
 	"servers": {
 		"vibe_version": {
 			"type": "stdio",
@@ -8,7 +16,10 @@
 				"/Users/apple/Work/Personal/opensource/vibe_check/vibe_version/",
 				"run",
 				"server.py"
-			]
+			],
+			"env": {
+				"OPENAI_API_KEY": "${input:openai-key}"
+			}
 		}
 	}
 }

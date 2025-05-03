@@ -6,19 +6,54 @@ mcp = FastMCP("vibe-version")
 
 @mcp.tool()
 def commit_changes() -> bool:
-    """Show the git status, add all the untracked files, and commit them"""
+    """Commit and backup all the changes in the current git repository"""
     import subprocess
-    # Show the git status
-    subprocess.run(["git", "status"])
-    try:
-        # Add all untracked files
-        subprocess.run(["git", "add", "-A"])
-        # Commit the changes
-        subprocess.run(["git", "commit", "-m", "Auto-commit by MCP"])
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Error committing changes: {e}")
-        return False
+    import openai
+    from os import environ
+
+    print("Starting commit_changes function...")
+    # # Show the git status
+    # git_status = subprocess.run(["git", "status"])
+    # print(git_status.stdout.decode())
+    # print(git_status.stderr.decode())
+    # # Check if there are any changes to commit
+    # if git_status.returncode != 0:
+    #     print("No changes to commit.")
+    #     return False
+    # if "nothing to commit" in git_status.stdout.decode():
+    #     print("No changes to commit.")
+    #     return False
+    # try:
+        # Get the git diff to summarize changes
+    result = subprocess.run(["git", "diff"], capture_output=True, text=True)
+    diff_output = result.stdout
+
+    # Use an LLM to summarize the changes
+    openai.api_key = environ.get("OPENAI_API_KEY")
+    print("OpenAI API Key:", openai.api_key)
+    if not openai.api_key:
+        raise ValueError("OpenAI API key is not set in the environment variables.")
+    client = openai.OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",  # Or another compatible chat model
+        messages=[
+            {"role": "user", "content": f"Summarize the following git diff for a commit message:\n{diff_output}"}
+        ],
+        max_tokens=50
+    )
+    commit_message = response.choices[0].message.content.strip()
+
+    # Add all untracked files
+    subprocess.run(["git", "add", "-A"])
+    # Commit the changes with the generated message
+    subprocess.run(["git", "commit", "-m", commit_message])
+    return True
+    # except subprocess.CalledProcessError as e:
+    #     print(f"Error committing changes: {e}")
+    #     return False
+    # except Exception as e:
+    #     print(f"Error generating commit message: {e}")
+    #     return False
 
 @mcp.tool()
 def git_history() -> str:
