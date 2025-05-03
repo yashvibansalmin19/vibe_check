@@ -13,6 +13,7 @@ async def list_changes(
     server_context: Any,
     arguments: Optional[Dict[str, Any]]
 ) -> List[Union[types.TextContent, types.ImageContent, types.EmbeddedResource]]:
+    logging.debug(f"Executing list_changes with change_history: {change_history}")
     """
     List all tracked code changes.
     

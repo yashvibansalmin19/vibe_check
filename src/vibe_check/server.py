@@ -16,7 +16,14 @@ from pydantic import AnyUrl
 import mcp.server.stdio
 
 # Import tool implementations
-from .tools import track_change, revert_change, list_changes
+from vibe_check.tools import track_change, revert_change, list_changes
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
+def start_server():
+    logging.debug("Starting Vibe Check MCP server...")
 
 # Store code changes and chat context
 change_history: List[Dict[str, Any]] = []
@@ -188,6 +195,7 @@ async def handle_call_tool(
 
 async def main():
     # Run the server using stdin/stdout streams
+    logging.debug("Starting MCP server...")
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         await server.run(
             read_stream,
