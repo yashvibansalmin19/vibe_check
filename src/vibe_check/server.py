@@ -1,7 +1,13 @@
 import asyncio
 import json
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union, Any
+
+# Import typing_extensions for Python 3.8 compatibility
+try:
+    from typing import Protocol
+except ImportError:
+    from typing_extensions import Protocol
 
 from mcp.server.models import InitializationOptions
 import mcp.types as types
@@ -10,12 +16,12 @@ from pydantic import AnyUrl
 import mcp.server.stdio
 
 # Store code changes and chat context
-change_history: List[Dict[str, any]] = []
+change_history: List[Dict[str, Any]] = []
 
 server = Server("vibe_check")
 
 @server.list_resources()
-async def handle_list_resources() -> list[types.Resource]:
+async def handle_list_resources() -> List[types.Resource]:
     """
     List available change history resources.
     Each change is exposed as a resource with a custom vibe:// URI scheme.
@@ -51,7 +57,7 @@ async def handle_read_resource(uri: AnyUrl) -> str:
     raise ValueError(f"Change history entry not found: {index_str}")
 
 @server.list_prompts()
-async def handle_list_prompts() -> list[types.Prompt]:
+async def handle_list_prompts() -> List[types.Prompt]:
     """
     List available prompts.
     Each prompt can have optional arguments to customize its behavior.
@@ -72,7 +78,7 @@ async def handle_list_prompts() -> list[types.Prompt]:
 
 @server.get_prompt()
 async def handle_get_prompt(
-    name: str, arguments: dict[str, str] | None
+    name: str, arguments: Optional[Dict[str, str]]
 ) -> types.GetPromptResult:
     """
     Generate a prompt for suggesting which changes to revert.
@@ -112,7 +118,7 @@ async def handle_get_prompt(
     )
 
 @server.list_tools()
-async def handle_list_tools() -> list[types.Tool]:
+async def handle_list_tools() -> List[types.Tool]:
     """
     List available tools for tracking and reverting code changes.
     """
@@ -154,8 +160,8 @@ async def handle_list_tools() -> list[types.Tool]:
 
 @server.call_tool()
 async def handle_call_tool(
-    name: str, arguments: dict | None
-) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
+    name: str, arguments: Optional[Dict[str, Any]]
+) -> List[Union[types.TextContent, types.ImageContent, types.EmbeddedResource]]:
     """
     Handle tool execution requests for tracking and reverting code changes.
     """
