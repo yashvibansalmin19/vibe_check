@@ -3,7 +3,12 @@
     "vibe-check": {
       "type": "stdio",
       "command": "uv",
-      "args": ["--directory", "D:\\vibe_check", "run", "vibe-check"]
+      "args": [
+        "--directory",
+        "/Users/apple/Work/Personal/opensource/vibe_check",
+        "run",
+        "vibe-check"
+      ]
     }
   }
 }
