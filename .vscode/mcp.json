@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "vibe-check": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["--directory", "D:\\vibe_check", "run", "vibe-check"]
+    }
+  }
+}
