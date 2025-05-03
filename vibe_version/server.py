@@ -4,12 +4,21 @@ from mcp.server.fastmcp import FastMCP
 # Create an MCP server
 mcp = FastMCP("vibe-version")
 
-
-# Add an addition tool
 @mcp.tool()
-def add(a: int, b: int) -> int:
-    """Add two numbers"""
-    return a + b
+def commit_changes() -> bool:
+    """Show the git status, add all the untracked files, and commit them"""
+    import subprocess
+    # Show the git status
+    subprocess.run(["git", "status"])
+    try:
+        # Add all untracked files
+        subprocess.run(["git", "add", "-A"])
+        # Commit the changes
+        subprocess.run(["git", "commit", "-m", "Auto-commit by MCP"])
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error committing changes: {e}")
+        return False
 
 @mcp.tool()
 def git_history() -> str:
