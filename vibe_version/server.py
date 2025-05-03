@@ -5,26 +5,23 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP("vibe-version")
 
 @mcp.tool()
-def commit_changes() -> bool:
+def commit_changes() -> str:
     """Commit and backup all the changes in the current git repository"""
     import subprocess
     import openai
     from os import environ
 
     print("Starting commit_changes function...")
-    # # Show the git status
-    # git_status = subprocess.run(["git", "status"])
-    # print(git_status.stdout.decode())
-    # print(git_status.stderr.decode())
-    # # Check if there are any changes to commit
-    # if git_status.returncode != 0:
-    #     print("No changes to commit.")
-    #     return False
-    # if "nothing to commit" in git_status.stdout.decode():
-    #     print("No changes to commit.")
-    #     return False
-    # try:
-        # Get the git diff to summarize changes
+    # Show the git status
+    git_status = subprocess.run(["git", "status"], capture_output=True, text=True)
+    # Check if there are any changes to commit
+    if git_status.returncode != 0:
+        print("No changes to commit.")
+        return False
+    if "nothing to commit" in git_status.stdout:
+        print("No changes to commit.")
+        return False
+    # Get the git diff to summarize changes
     result = subprocess.run(["git", "diff"], capture_output=True, text=True)
     diff_output = result.stdout
 
@@ -47,13 +44,7 @@ def commit_changes() -> bool:
     subprocess.run(["git", "add", "-A"])
     # Commit the changes with the generated message
     subprocess.run(["git", "commit", "-m", commit_message])
-    return True
-    # except subprocess.CalledProcessError as e:
-    #     print(f"Error committing changes: {e}")
-    #     return False
-    # except Exception as e:
-    #     print(f"Error generating commit message: {e}")
-    #     return False
+    return f"The following changes were backed up in the version history: {git_status.stdout}"
 
 @mcp.tool()
 def git_history() -> str:
