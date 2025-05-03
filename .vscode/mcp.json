@@ -1,0 +1,14 @@
+{
+	"servers": {
+		"vibe_version": {
+			"type": "stdio",
+			"command": "uv",
+			"args": [
+				"--directory",
+				"/Users/apple/Work/Personal/opensource/vibe_check/vibe_version/",
+				"run",
+				"server.py"
+			]
+		}
+	}
+}
