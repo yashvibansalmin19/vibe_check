@@ -1,5 +1,12 @@
 # server.py
 from mcp.server.fastmcp import FastMCP
+import subprocess
+import re
+from typing import List, Dict
+import subprocess
+import openai
+from os import environ
+
 
 # Create an MCP server
 mcp = FastMCP("vibe-version")
@@ -7,10 +14,6 @@ mcp = FastMCP("vibe-version")
 @mcp.tool()
 def commit_changes() -> str:
     """Commit and backup all the changes in the current git repository"""
-    import subprocess
-    import openai
-    from os import environ
-
     print("Starting commit_changes function...")
     # Show the git status
     git_status = subprocess.run(["git", "status"], capture_output=True, text=True)
@@ -49,11 +52,27 @@ def commit_changes() -> str:
     return f"The following changes were backed up in the version history: {committed_diff_stat.stdout}"
 
 @mcp.tool()
-def git_history() -> str:
-    """Get the git history"""
-    import subprocess
-    result = subprocess.run(["git", "log", "--oneline", "--graph"], capture_output=True, text=True)
-    return result.stdout
+def git_history() -> List[Dict[str, str]]:
+    """Get the git history as a list of commits"""
+    result = subprocess.run(["git", "log", "--oneline"], capture_output=True, text=True)
+    log_output = result.stdout.strip()
+    commits = []
+    for line in log_output.splitlines():
+        match = re.match(r"([a-f0-9]+)\s+(.*)", line)
+        if match:
+            hash = match.group(1)
+            description = match.group(2)
+            commits.append({"hash": hash, "description": description})
+    return commits
+
+@mcp.tool()
+def checkout_commit(commit_hash: str) -> str:
+    """Checkout a specific git commit"""
+    try:
+        subprocess.run(["git", "checkout", commit_hash], check=True, capture_output=True, text=True)
+        return f"Successfully checked out commit: {commit_hash}"
+    except subprocess.CalledProcessError as e:
+        return f"Error checking out commit {commit_hash}: {e.stderr}"
 
 @mcp.tool()
 def ensure_git_remote() -> str:
