@@ -1,5 +1,12 @@
 # server.py
 from mcp.server.fastmcp import FastMCP
+import subprocess
+import re
+from typing import List, Dict
+import subprocess
+import openai
+from os import environ
+
 
 # Create an MCP server
 mcp = FastMCP("vibe-version")
@@ -7,10 +14,6 @@ mcp = FastMCP("vibe-version")
 @mcp.tool()
 def commit_changes() -> str:
     """Commit and backup all the changes in the current git repository"""
-    import subprocess
-    import openai
-    from os import environ
-
     print("Starting commit_changes function...")
     # Show the git status
     git_status = subprocess.run(["git", "status"], capture_output=True, text=True)
@@ -49,11 +52,69 @@ def commit_changes() -> str:
     return f"The following changes were backed up in the version history: {committed_diff_stat.stdout}"
 
 @mcp.tool()
-def git_history() -> str:
-    """Get the git history"""
+def git_history() -> List[Dict[str, str]]:
+    """Get the git history as a list of commits"""
+    result = subprocess.run(["git", "log", "--oneline"], capture_output=True, text=True)
+    log_output = result.stdout.strip()
+    commits = []
+    for line in log_output.splitlines():
+        match = re.match(r"([a-f0-9]+)\s+(.*)", line)
+        if match:
+            hash = match.group(1)
+            description = match.group(2)
+            commits.append({"hash": hash, "description": description})
+    return commits
+
+@mcp.tool()
+def checkout_commit(commit_hash: str) -> str:
+    """Checkout a specific git commit"""
+    try:
+        subprocess.run(["git", "checkout", commit_hash], check=True, capture_output=True, text=True)
+        return f"Successfully checked out commit: {commit_hash}"
+    except subprocess.CalledProcessError as e:
+        return f"Error checking out commit {commit_hash}: {e.stderr}"
+
+@mcp.tool()
+def ensure_git_remote() -> str:
+    """Check if the current repository has a git remote set. If not, create a repository on GitHub and link it."""
     import subprocess
-    result = subprocess.run(["git", "log", "--oneline", "--graph"], capture_output=True, text=True)
-    return result.stdout
+    import os
+    import requests
+
+    try:
+        # Check if a remote is set
+        result = subprocess.run(["git", "remote"], capture_output=True, text=True)
+        if result.stdout.strip():
+            return "Git remote is already set."
+
+        # Get GitHub credentials from environment variables
+        github_token = os.getenv("GITHUB_TOKEN")
+        github_user = os.getenv("GITHUB_USER")
+        if not github_token or not github_user:
+            return "GitHub credentials (GITHUB_TOKEN and GITHUB_USER) are not set in environment variables."
+
+        # Get the current directory name as the repo name
+        repo_name = os.path.basename(os.getcwd())
+
+        # Create a new repository on GitHub
+        headers = {"Authorization": f"token {github_token}"}
+        data = {"name": repo_name, "private": False}
+        response = requests.post("https://api.github.com/user/repos", headers=headers, json=data)
+
+        if response.status_code != 201:
+            return f"Failed to create GitHub repository: {response.json().get('message', 'Unknown error')}"
+
+        # Extract the clone URL from the response
+        clone_url = response.json().get("clone_url")
+        if not clone_url:
+            return "Failed to retrieve clone URL from GitHub response."
+
+        # Add the remote to the local repository
+        subprocess.run(["git", "remote", "add", "origin", clone_url])
+        return f"GitHub repository created and linked: {clone_url}"
+
+    except Exception as e:
+        return f"An error occurred: {e}"
 
 # Add a dynamic greeting resource
 @mcp.resource("greeting://{name}")
