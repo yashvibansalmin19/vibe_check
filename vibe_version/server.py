@@ -55,6 +55,48 @@ def git_history() -> str:
     result = subprocess.run(["git", "log", "--oneline", "--graph"], capture_output=True, text=True)
     return result.stdout
 
+@mcp.tool()
+def ensure_git_remote() -> str:
+    """Check if the current repository has a git remote set. If not, create a repository on GitHub and link it."""
+    import subprocess
+    import os
+    import requests
+
+    try:
+        # Check if a remote is set
+        result = subprocess.run(["git", "remote"], capture_output=True, text=True)
+        if result.stdout.strip():
+            return "Git remote is already set."
+
+        # Get GitHub credentials from environment variables
+        github_token = os.getenv("GITHUB_TOKEN")
+        github_user = os.getenv("GITHUB_USER")
+        if not github_token or not github_user:
+            return "GitHub credentials (GITHUB_TOKEN and GITHUB_USER) are not set in environment variables."
+
+        # Get the current directory name as the repo name
+        repo_name = os.path.basename(os.getcwd())
+
+        # Create a new repository on GitHub
+        headers = {"Authorization": f"token {github_token}"}
+        data = {"name": repo_name, "private": False}
+        response = requests.post("https://api.github.com/user/repos", headers=headers, json=data)
+
+        if response.status_code != 201:
+            return f"Failed to create GitHub repository: {response.json().get('message', 'Unknown error')}"
+
+        # Extract the clone URL from the response
+        clone_url = response.json().get("clone_url")
+        if not clone_url:
+            return "Failed to retrieve clone URL from GitHub response."
+
+        # Add the remote to the local repository
+        subprocess.run(["git", "remote", "add", "origin", clone_url])
+        return f"GitHub repository created and linked: {clone_url}"
+
+    except Exception as e:
+        return f"An error occurred: {e}"
+
 # Add a dynamic greeting resource
 @mcp.resource("greeting://{name}")
 def get_greeting(name: str) -> str:
